@@ -1,0 +1,31 @@
+{
+  "name": "rabbitmq",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+  "build": "tsc -b"
+},
+"devDependencies": {
+  "@repo/typescript-config": "workspace:*",
+  "@types/node": "^22.15.3",
+  "ts-node": "^10.9.2",
+  "tsc-node": "^0.0.3",
+  "typescript": "^5.9.3"
+},
+"dependencies": {
+  "@types/amqplib": "^0.10.8",
+  "amqplib": "^0.10.9",
+  "dotenv": "^17.2.3"
+},
+"types": "./dist/index.d.ts",
+"exports": {
+  ".": {
+    "import": "./dist/index.js",
+    "types": "./dist/index.d.ts"
+  }
+},
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}
