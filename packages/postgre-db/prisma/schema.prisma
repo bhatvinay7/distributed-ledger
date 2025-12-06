@@ -1,0 +1,140 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  ADMIN
+  USER
+
+}
+
+enum paymentType {
+   Online
+   Cheque
+   Cash
+   None
+}
+
+model User {
+  id        String   @id @default(uuid())
+  username  String
+  phone     String   @unique
+  email     String   @unique
+  role   Role     @default(USER)
+  accounts  Account[]
+  createdAt DateTime @default(now())
+}
+
+model Account {
+  id        String   @id @default(uuid())
+  userId    String
+  accountType String
+  amount    Decimal  @default(0)
+  version   Int      @default(1)
+  details   AccountDetail?
+  services  ServiceDetail[]
+  ledgerEntries LedgerEntry[]
+  transactions Transaction[] @relation("AccountTransactions")
+  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+}
+
+model AccountDetail {
+  id         String   @id @default(uuid())
+  accountId  String   @unique
+  bankName   String
+  branch     String
+  ifsc       String
+  accountNo  String
+  address    String
+  pin        String
+
+  debitServiceId String?
+  creditServiceId String?
+  walletId       String?
+
+  account    Account @relation(fields: [accountId], references: [id])
+}
+
+model ServiceDetail {
+  id          String   @id @default(uuid())
+  accountId   String
+  serviceName String
+  serviceDetail String
+  pin         String?
+  limit       Decimal? @default(0)
+  maxLimit    Decimal? @default(0)
+  isAvailable Boolean  @default(true)
+  account Account @relation(fields: [accountId], references: [id])
+}
+
+model Transaction {
+  id             String   @id @default(uuid())
+  idempotencyKey String   @unique
+  senderId       String
+  receiverId     String
+  amount         Decimal
+  status         String    // pending, success, failed
+  createdAt      DateTime  @default(now())
+  ledgerEntries LedgerEntry[]
+  journalEvents Journal[]
+  sender   Account @relation("AccountTransactions", fields: [senderId], references: [id])
+}
+
+model LedgerEntry {
+  id            String   @id @default(uuid())
+  transactionId String
+  accountId     String
+  debit         Decimal   @default(0)
+  credit        Decimal   @default(0)
+  debitType     paymentType @default(None)
+  creditType    paymentType @default(None)
+  balance       Decimal
+  note          String
+  createdAt     DateTime  @default(now())
+  transaction Transaction @relation(fields: [transactionId], references: [id])
+  account     Account     @relation(fields: [accountId], references: [id])
+}
+
+model Journal {
+  id            String   @id @default(uuid())
+  transactionId String
+  eventType     String
+  data          Json
+  timestamp     DateTime @default(now())
+  transaction Transaction @relation(fields: [transactionId], references: [id])
+}
+
+model Idempotency {
+  idempotencyKey String  @id
+  status         String
+  responseData   Json?
+  createdAt      DateTime @default(now())
+}
+
+model AuditLog {
+  id            String   @id @default(uuid())
+  userId        String?
+  action        String
+  entity        String
+  entityId      String
+  previousValue Json?
+  newValue      Json?
+  timestamp     DateTime @default(now())
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  message   String
+  type      String    // sms/email/app
+  status    String    // sent/pending
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+}
