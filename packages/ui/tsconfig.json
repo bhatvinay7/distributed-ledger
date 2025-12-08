@@ -6,6 +6,6 @@
    "@/*": ["./*"]
  }
   },
-  "include": ["src"],
+  "include": ["src", "../../apps/web/src/components/sidebar.tsx"],
   "exclude": ["node_modules", "dist"]
 }
