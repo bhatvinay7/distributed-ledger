@@ -175,15 +175,6 @@ EventStoreDB is included in Docker Compose and serves as the event store:
 esdb://admin:changeit@localhost:2113?tls=false
 ```
 
-### 5. Cloudinary Setup (Optional - for file uploads)
-
-1. Sign up at [Cloudinary](https://cloudinary.com/)
-2. Go to your Dashboard
-3. Copy the following details:
-   - Cloud Name
-   - API Key
-   - API Secret
-
 ## ⚙️ Environment Variables Setup
 
 Create `.env` files in the respective application directories:
