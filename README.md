@@ -1,6 +1,38 @@
 # PayIt - Distributed Ledger System
 
-A scalable distributed ledger system built with Turborepo monorepo architecture, featuring event sourcing with EventStoreDB (Kurrent DB), CQRS pattern implementation, and microservices for handling financial transactions, projections, and real-time updates.
+A scalable, event-sourced distributed ledger system built with Turborepo monorepo architecture, featuring event sourcing with EventStoreDB 
+(Kurrent DB), CQRS pattern implementation, and microservices for handling financial transactions, projections, and real-time updates.
+
+## 🎯 Project Overview
+
+**PayIt** is a modern financial transaction processing platform that leverages event sourcing and CQRS (Command Query Responsibility 
+Segregation) patterns to provide a robust, scalable, and auditable distributed ledger system. The system is designed to handle high-throughput 
+financial operations while maintaining complete transaction history and ensuring data consistency across distributed services.
+
+### Key Features
+
+- ✅ **Event Sourcing** - Complete audit trail of all transactions with EventStoreDB as the single source of truth
+- ✅ **CQRS Architecture** - Separated read and write models for optimized performance and scalability
+- ✅ **Distributed Microservices** - Independent services for transactions, projections, and business logic
+- ✅ **Real-time Projections** - Automatically updated read models from event streams
+- ✅ **Eventual Consistency** - Reliable data synchronization across all services
+- ✅ **Message-Driven Communication** - Asynchronous processing with RabbitMQ
+- ✅ **High Availability** - Redis-backed caching and session management
+- ✅ **Type-Safe Development** - Shared TypeScript types across the monorepo
+- ✅ **OAuth Integration** - Secure authentication with Google OAuth
+- ✅ **Developer-Friendly** - Modern tooling with Turborepo, Prisma, and Next.js
+
+### Use Cases
+
+PayIt is ideal for building:
+
+- **Payment Processing Systems** - Handle transactions with complete audit trails
+- **Digital Wallets** - Manage user balances and transaction histories
+- **Banking Applications** - Core banking functionality with event sourcing
+- **Financial Ledgers** - Double-entry bookkeeping and reconciliation
+- **Cryptocurrency Platforms** - Track blockchain transactions and wallet states
+- **Accounting Systems** - Immutable financial records and reporting
+- **E-commerce Platforms** - Order processing and payment management
 
 ## 📁 Project Structure
 
