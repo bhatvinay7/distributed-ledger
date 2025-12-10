@@ -12,7 +12,6 @@ enum Role {
   USER
 
 }
-
 enum paymentType {
    Online
    Cheque
@@ -25,7 +24,6 @@ enum paymentStatus {
   FAILED
   None
 }
-
 enum outbox {
   NEW
   PROCESSING
@@ -120,9 +118,11 @@ model LedgerEntry {
 
 model Outbox {
     id  String   @id @default(uuid())
+    transactionId String
     payload String
     senderId  String
     receiverId  String
+    attempts   Int      @default(1)
     createdAt DateTime @default(now())
     status outbox @default(NEW)
 }

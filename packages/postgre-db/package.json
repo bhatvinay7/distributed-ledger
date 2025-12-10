@@ -1,27 +1,31 @@
 {
-  "name": "postgre-db",
+  "name": "prisma",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
+  "type": "module",
   "scripts": {
-  "build": " pnpm prisma generate  && tsc -b"
-},
-"devDependencies": {
-  "@repo/typescript-config": "workspace:*",
-  "@types/node": "^22.15.3",
-  "prisma": "^6.19.0",
-  "ts-node": "^10.9.2",
-  "tsc-node": "^0.0.3",
-  "typescript": "^5.9.3"
-},
-"types": "./dist/index.d.ts",
-"exports": {
-  ".": {
-    "import": "./dist/index.js",
-    "types": "./dist/index.d.ts"
-  }
-},
+    "build": " pnpm prisma generate  && tsc -b"
+  },
+  "devDependencies": {
+    "@repo/typescript-config": "workspace:*",
+    "@types/node": "^22.15.3",
+    "prisma": "^6.19.0",
+    "ts-node": "^10.9.2",
+    "tsc-node": "^0.0.3",
+    "typescript": "^5.9.3"
+  },
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
   "keywords": [],
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "@prisma/client": "6.19.0"
+  }
 }
