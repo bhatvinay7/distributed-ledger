@@ -35,7 +35,7 @@ async function callRabbit(){
    console.log('Connection successfully (re)established');
    retryAttempt=0
  });
- return {};
+ return {projectionQueue,serviceQueue,serviceChannel,projectionChannel};
 }
 
 const {projectionQueue,serviceQueue,serviceChannel,projectionChannel} = await callRabbit();
