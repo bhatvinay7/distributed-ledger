@@ -1,0 +1,181 @@
+services:
+  web:
+   container_name: web
+   build:
+    context: .
+    dockerfile: apps/web/dockerfile.dev.yaml
+   ports:
+    - "3000:3000"
+   env_file:
+    -  ./apps/web/.env
+   networks:
+    - payit
+   deploy:
+    resources:
+      limits:
+        cpus: '1.5'
+        memory: 2G     
+  http-server:
+    container_name: http-server
+    build:
+      context: .
+      dockerfile: apps/http-server/dockerfile.dev.yaml
+    ports:
+    - "3002:3002"
+    env_file:
+    -  ./apps/http-server/.env
+
+    networks:
+      - payit
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 1G  
+  projection-worker:
+    container_name: projection-worker
+    build:
+      context: .
+      dockerfile: apps/projection-worker/dockerfile.dev.yaml
+    ports:
+      - "3004:3004"
+    env_file:
+      -  ./apps/projection-worker/.env
+    networks:
+      - payit
+    deploy:
+     resources:
+       limits:
+         cpus: '0.25'
+         memory: 1G  
+
+  transaction-worker:
+    container_name: transaction-worker
+    build:
+      context: .
+      dockerfile: apps/transaction-worker/dockerfile.dev.yaml
+    ports:
+      - "3005:3005"
+    env_file:
+      -  ./apps/transaction-worker/.env
+    networks:
+      - payit
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 1G         
+  service-worker:
+    container_name: service-worker
+    build:
+      context: .
+      dockerfile: apps/service-worker/dockerfile.dev.yaml
+    ports:
+      - "3006:3006"
+    env_file:
+      -  ./apps/service-worker/.env
+    networks:
+      - payit
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 1G       
+  outbox-worker:
+    container_name: service-worker
+    build:
+      context: .
+      dockerfile: apps/outbox-worker/dockerfile.dev.yaml
+    ports:
+      - "3006:3006"
+    env_file:
+      -  ./apps/outbox-worker/.env
+    networks:
+      - payit
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 1G                                   
+
+  kurrent1:
+   image: kurrentplatform/kurrentdb:latest
+   container_name: kurrent1
+   command:
+     - --insecure
+     - --node-name=kurrent1
+     - --gossip-seed=http://kurrent1:2113
+     - --gossip-seed=http://kurrent2:2113
+     - --gossip-seed=http://kurrent3:2113
+     - --replication-port=1111
+     - --http-port=2111
+   environment:
+     - KURRENTDB_INSECURE=true
+   ports:
+     - "2111:2111"   # Admin / gossip HTTP for node1
+     - "1111:1111"   # internal replication tcp for node1
+   volumes:
+     - ./data/kurrent1:/var/lib/kurrentdb
+   networks:
+     - payit
+   healthcheck:
+     test: ["CMD", "curl", "-fsS", "http://localhost:2111/health" ]
+     interval: 10s
+     timeout: 3s
+     retries: 10
+
+  kurrent2:
+   image: kurrentplatform/kurrentdb:latest
+   container_name: kurrent2
+   command:
+     - --insecure
+     - --node-name=kurrent2
+     - --gossip-seed=http://kurrent1:2113
+     - --gossip-seed=http://kurrent2:2113
+     - --gossip-seed=http://kurrent3:2113
+     - --replication-port=1112
+     - --http-port=2112
+   environment:
+     - KURRENTDB_INSECURE=true
+   ports:
+     - "2112:2112"
+     - "1112:1112"
+   volumes:
+     - ./data/kurrent2:/var/lib/kurrentdb
+   networks:
+     - kurrent-net
+   healthcheck:
+     test: ["CMD", "curl", "-fsS", "http://localhost:2112/health" ]
+     interval: 10s
+     timeout: 3s
+     retries: 10
+
+  kurrent3:
+   image: kurrentplatform/kurrentdb:latest
+   container_name: kurrent3
+   command:
+     - --insecure
+     - --node-name=kurrent3
+     - --gossip-seed=http://kurrent1:2113
+     - --gossip-seed=http://kurrent2:2113
+     - --gossip-seed=http://kurrent3:2113
+     - --replication-port=1113
+     - --http-port=2113
+   environment:
+     - KURRENTDB_INSECURE=true
+   ports:
+     - "2113:2113"
+     - "1113:1113"
+   volumes:
+     - ./data/kurrent3:/var/lib/kurrentdb
+   networks:
+     - payit
+   healthcheck:
+     test: ["CMD", "curl", "-fsS", "http://localhost:2113/health" ]
+     interval: 10s
+     timeout: 3s
+     retries: 10
+networks:
+  payit:
+    name: payit
+    driver: bridge           
