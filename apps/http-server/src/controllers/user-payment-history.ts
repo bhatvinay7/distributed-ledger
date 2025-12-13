@@ -10,11 +10,13 @@ const fetchUserPaymentHistory = async (req: AuthRequest, res: Response) => {
                         createdAt: 'desc',
                   },
             })
+            if(!userPaymentHistory){
+                  return res.status(404).json({message:"trasaction history is not avalable"})
+            }
             return res.status(200).json({paymentHistory:userPaymentHistory})
       }
       catch (error: any) {
        return res.status(500).json({message:"server error"})
       }
 }
-
 export default fetchUserPaymentHistory

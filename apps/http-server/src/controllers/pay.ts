@@ -14,11 +14,11 @@ export const payAmount = async (req:AuthRequest, res: Response) => {
     if(!user?.userId){
         return res.status(400).json({message:"user info is not avalable"})
     }
-    const exists = await redis.get(`idem:${idempotencyKey}`);
+    const exists = await redis.get(`${user.userId}-${idempotencyKey}`);
     if (exists) {
       return res.status(409).json({ message: "Duplicate request" });
     }
-    await redis.set(`idem:${idempotencyKey}`, "1", { EX: 30 })
+    await redis.set(`${user.userId}-${idempotencyKey}`, "1", { EX: 30 })
      const account = await prisma.account.findFirst({
             where: { userId: user?.userId }
         });

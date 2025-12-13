@@ -3,7 +3,7 @@ import jwt from "jsonwebtoken";
 import getUserdata from "../utils/getUserdata.js";
 import {AuthRequest } from 'types'
 import getRedisClient from 'redisclient'
-import {prisma} from 'prisma'
+import {prisma,BankAccountType} from 'prisma'
 import dotenv from 'dotenv'
 dotenv.config()
 import {SelectedUser} from 'types'
@@ -25,12 +25,11 @@ const callbackHandler = async (req: AuthRequest, res: Response) => {
          isEmailVerified: true,
          picture: data.picture,
          refreshToken:data.refresh_token,
+         accessToken: data.access_token,
          phone:""
        }   
         })
-      await redis.set(`${user.email}`,user.id)   
     }
-    
     else{
       await prisma.user.update({
         where:{email:data.email},
@@ -65,7 +64,7 @@ const callbackHandler = async (req: AuthRequest, res: Response) => {
     
     await redis.set(`${user.id}-access_token`,data.access_token) 
     await redis.set(`${user.id}-inbox-token`,data.refresh_token)
-    res.cookie("inbox_token", refreshToken , {
+    res.cookie("payit_token", refreshToken , {
       httpOnly: true,
       secure: true,
       sameSite: "none",
@@ -75,7 +74,9 @@ const callbackHandler = async (req: AuthRequest, res: Response) => {
     });
 
     return res.redirect(`${process.env.NEXT_PUBLIC_FRONTEND_URL!}`);
-  } catch (error: any) {
+  }
+  
+  catch (error: any) {
     console.error("OAuth Error:", error.message);
     return res.status(500).json({ message: "OAuth error", error: `${error.message}` });
   }
