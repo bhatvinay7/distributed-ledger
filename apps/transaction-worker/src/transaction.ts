@@ -1,108 +1,139 @@
-import {prisma} from 'prisma'
-import {TransactionEventData} from 'types'
-export default async function processTransfer(event:TransactionEventData) {
+import { prisma, Prisma } from "prisma";
+import { TransactionEvent,TransactionEventMetadata } from "types";
 
-  return prisma.$transaction(async (tx) => {
+type TransactionMetadata ={
+  idempotencyKey:string
+  causationId:string;
+  correlationId:string;
+  source: string;
+  actorId: string;
+}
+export default async function processTransfer(event: TransactionEvent) {
+  return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    // 1) Idempotency check
+    const metadata = event.metadata.reduce<any>(
+  (acc, meta: TransactionEventMetadata) => {
+    acc[meta.key] = meta.value;
+    return acc;
+  },
+  {}
+) as TransactionMetadata;
     const existing = await tx.transaction.findUnique({
-      where: { id: event.transactionId },
+      where: { id: event.data.transactionId },
     });
 
-    if (existing && existing.status == "SUCCESS") {
+    if (existing && existing.status === "SUCCESS") {
       return existing;
     }
 
-  if (!existing) {
-    await tx.transaction.create({
-      data: {
-        id: event.transactionId,
-          senderId:event.senderId,
-          receiverId:event.receiverId,
-          amount: event.debit,
-          status: 'PENDING',
-          idempotencyKey : event.idEmpotencyKey
+    if (!existing) {
+      await tx.transaction.create({
+        data: {
+          id: event.data.transactionId,
+          senderId: event.data.senderId,
+          receiverId: event.data.receiverId,
+          senderPrimaryAccountId: event.data.senderPrimaryAccountId,
+          receiverPrimaryAccountId: event.data.receiverPrimaryAccountId,
+          amount: new Prisma.Decimal(event.data.debit),
+          status: "PENDING",
+          idempotencyKey: metadata.idempotencyKey,
         },
       });
     }
-    // 3) Read sender & receiver
-    const sender = await tx.account.findFirst({ where: { userId: event.senderId }});
+
+    // 2) Load sender
+    const sender = await tx.account.findFirst({
+      where: { userId: event.data.senderId },
+    });
     if (!sender) throw new Error("Sender not found");
-    if (BigInt(""+sender.balance) < BigInt(event.debit)) {
-      // mark transaction failed and throw
+
+    const debitAmount = new Prisma.Decimal(event.data.debit);
+
+    // 3) Balance check (Decimal-safe)
+    if (sender.balance.lt(debitAmount)) {
       await tx.transaction.update({
-        where: { id: event.transactionId },
+        where: { id: event.data.transactionId },
         data: { status: "FAILED", updatedAt: new Date() },
       });
       throw new Error("Insufficient funds");
     }
 
-    const receiver = await tx.account.findFirst({ where: { userId: event.receiverId }});
+    // 4) Load receiver
+    const receiver = await tx.account.findFirst({
+      where: { userId: event.data.receiverId },
+    });
     if (!receiver) throw new Error("Receiver not found");
 
-    // 4) Optimistic update sender: updateMany with version check
+    // 5) Optimistic update sender
     const senderUpdate = await tx.account.updateMany({
       where: {
-        userId: event.senderId,
-        version: sender.version, // ensure version hasn't changed
+        userId: event.data.senderId,
+        id: event.data.senderPrimaryAccountId,
+        version: sender.version,
       },
       data: {
-        balance: (BigInt(""+sender.balance)*100n - BigInt(event.debit)*100n).toString().padStart(2, "0"),
+        balance: sender.balance.minus(debitAmount),
         version: { increment: 1 },
       },
     });
 
     if (senderUpdate.count === 0) {
-      // Optimistic lock failed for sender -> throw to rollback and caller can retry
       throw new Error("Optimistic lock failed for sender");
     }
 
-    // 5) Optimistic update receiver
+    // 6) Optimistic update receiver
     const receiverUpdate = await tx.account.updateMany({
       where: {
-        userId: event.receiverId,
+        userId: event.data.receiverId,
+        id: event.data.receiverPrimaryAccountId,
         version: receiver.version,
       },
       data: {
-        balance: (BigInt(""+receiver.balance)*100n + BigInt(event.debit)*100n).toString().padStart(2, "0"),
+        balance: receiver.balance.plus(debitAmount),
         version: { increment: 1 },
       },
     });
 
     if (receiverUpdate.count === 0) {
-      // If receiver update fails, throw to rollback sender update as well
       throw new Error("Optimistic lock failed for receiver");
     }
 
-    // 6) Write Outbox record (atomic with the updates above)
+    // 7) Outbox (atomic)
     const outboxPayload = {
-      transactionId : event.transactionId,
-      senderId: event.senderId,
-      receiverId:event.receiverId,
-      debit: event.debit,
-      credit: event.credit,
-      debitType:event.debitType,
-      creditType :event.creditType,
-      note :event.note,
-      amount: event.debit.toString(),
+      transactionId: event.data.transactionId,
+      senderId: event.data.senderId,
+      receiverId: event.data.receiverId,
+      senderAccountId: event.data.senderPrimaryAccountId,
+      receiverAccountId: event.data.receiverPrimaryAccountId,
+      debit: event.data.debit,
+      credit: event.data.credit,
+      debitType: event.data.debitType,
+      creditType: event.data.creditType,
+      note: event.data.note,
+      amount: debitAmount.toString(),
       createdAt: new Date().toISOString(),
     };
 
     await tx.outbox.create({
       data: {
-        transactionId:event.transactionId,
-        senderId:event.receiverId,
-        receiverId:event.senderId,
+        transactionId: event.data.transactionId,
+        correlationId: metadata.correlationId,
+        causationId: metadata.causationId,
+        senderId: event.data.senderId,
+        receiverId: event.data.receiverId,
         payload: JSON.stringify(outboxPayload),
         status: "NEW",
-        createdAt:new Date().toISOString()
+        createdAt: new Date(),
+        
       },
     });
 
-    // 7) Mark transaction SUCCESS (still inside same DB TX)
+    // 8) Mark SUCCESS
     await tx.transaction.update({
-      where: { id: event.transactionId },
-      data: { status: 'SUCCESS' },
+      where: { id: event.data.transactionId },
+      data: { status: "SUCCESS" },
     });
 
     return { status: "SUCCESS" };
-  }); // if any throw happens, entire transaction rolls back
+  });
 }

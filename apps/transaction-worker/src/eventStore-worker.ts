@@ -1,6 +1,6 @@
 import { client, persistentSubscriptionToAllSettingsFromDefaults, streamNameFilter } from "ledger";
 import processTransactionEvent  from "./transaction.js";
-import {TransactionEventData} from 'types'
+import {TransactionEvent} from 'types'
 async function setupSubscriptionGroup() {
   try {
     await client?.createPersistentSubscriptionToAll(
@@ -28,13 +28,13 @@ async function startWorker() {
     if(subscription){
 
       for await (const resolved of subscription) {
-        const event = resolved.event;
+        const event = resolved.event as any;
         if (!event) continue;
         
         console.log(`Handling event ${event.type} retryCount=${resolved.retryCount}`);
         
         try {
-          await processTransactionEvent(event.data as TransactionEventData );
+          await processTransactionEvent(event);
           await subscription.ack(resolved)
         } catch (err:any) {
           console.error("Failed processing event, will retry:", err);

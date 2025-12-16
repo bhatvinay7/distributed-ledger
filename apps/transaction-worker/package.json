@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
+  "type":"module",
   "scripts": {
   "dev": " node --loader ts-node/esm src/index.ts",
   "build": "tsc -b",
@@ -14,7 +15,8 @@
     "express": "^5.1.0",
     "prisma": "workspace:*",
     "rabbitmq": "workspace:*",
-    "redisclient": "workspace:*"
+    "redisclient": "workspace:*",
+    "ledger": "workspace:*"
   },
   "devDependencies": {
     "@repo/typescript-config": "workspace:*",
