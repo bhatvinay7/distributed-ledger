@@ -3,13 +3,24 @@
 import { Card, CardContent } from "payit-ui"
 import { Button } from "payit-ui"
 import { Wallet, Eye, EyeOff, TrendingDown } from "lucide-react"
-import { useState } from "react"
-
+import { useState,useEffect } from "react"
+import {fetch_account_detail,accountDetail} from "../utils/fetch_user_account_detail"
 export default function AccountBalance() {
+  const [accountsInfo, setAccountsInfo] = useState<accountDetail>({user_account_detail:{accountId:"",balance:0,spent:0}});
   const [hidden, setHidden] = useState(false)
-
+  useEffect(() => {
+   fetchAccounts();
+ }, []);
+ async function fetchAccounts() {
+   try {
+     const respose = await fetch_account_detail();
+     setAccountsInfo(respose);
+   } catch (err) {
+     console.error(err);
+   }
+ }
   return (
-    <Card className="w-full max-w-md mx-auto mt-6 shadow-none  border-0 p-0 rounded-2xl">
+    <Card className="w-full max-w-md mx-auto mt-1 shadow-none  border-0 p-0 rounded-2xl">
       <CardContent className="p-6 shadow-none">
 
         {/* Header */}
@@ -35,7 +46,7 @@ export default function AccountBalance() {
         <div className="mb-6">
           <p className="text-sm text-gray-500">Available Balance</p>
           <p className="text-3xl font-bold text-gray-900 mt-1 tracking-wide">
-            {hidden ? "••••••" : "₹ 52,840.20"}
+            {hidden ? "••••••" : `${accountsInfo.user_account_detail.balance} ₹`}
           </p>
         </div>
 
@@ -46,7 +57,7 @@ export default function AccountBalance() {
             <div>
               <p className="text-sm text-gray-500">Total Spent</p>
               <p className="text-xl font-semibold text-gray-900">
-                {hidden ? "•••••" : "₹ 12,430.00"}
+                {hidden ? "•••••" : `${accountsInfo.user_account_detail?.spent || 0} ₹`}
               </p>
             </div>
           </div>

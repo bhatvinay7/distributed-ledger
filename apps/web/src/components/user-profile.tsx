@@ -39,7 +39,7 @@ export default function UserProfile() {
           <Input disabled={true} className="outline-0 border-0" type="tel" placeholder="+91-XXXXXXXXXX" />
         </div>
 
-        <Button className="mt-4" className="hover:bg-blue-400/25">Save Changes</Button>
+        <Button  className="hover:bg-blue-400/25">Save Changes</Button>
       </form>
 
       <Separator className="my-6" />
