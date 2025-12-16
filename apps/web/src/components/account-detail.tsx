@@ -5,6 +5,7 @@ type AccountDetailProps = {
   username: string;
   bankName: string;
   totalAmount: number; // or string if you show currency formatted string
+  
 };
 
 export function AccountDetail({ username, bankName, totalAmount }: AccountDetailProps) {

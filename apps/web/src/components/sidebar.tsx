@@ -30,7 +30,7 @@ export default function Sidebar() {
     },
     {
       label: "Transactions",
-      href: "/transactions",
+      href: "/main/transactions",
       icon: <History size={18} className="mr-2" />,
     },
      {
@@ -73,7 +73,7 @@ export default function Sidebar() {
   ]
 
   return (
-    <div className={`${isSidebar ?" w-full sm:min-w-[300px] border border-r-black/15":"w-fit"}   h-fit sticky top-23  bg-white `}>
+    <div className={`${isSidebar ?" w-full sm:min-w-[300px] border-r border-r-black/15":"w-fit"}   h-fit sticky top-23  bg-white `}>
       <div onClick={()=> call_SlideBar_Dispatch(!isSidebar)} className={`${ isSidebar ? "left-[90%]" :" left-[30%] "} relative  `}>
       <SidebarToggleComponent/>
       </div>
@@ -87,7 +87,6 @@ export default function Sidebar() {
             <Link
               key={item.href}
               href={item.href}
-              onClick={() => call_subSlideBar_Dispatch(item.label)}
               className="flex items-center px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:bg-blue-100 transition"
             >
               {item.icon}
@@ -128,7 +127,6 @@ export default function Sidebar() {
     <Link
       key={item.href}
       href={item.href}
-      onClick={() => call_subSlideBar_Dispatch(item.label)}
       className="flex items-center hover:cursor-pointer gap-3 px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:bg-blue-100 transition"
     >
       <span className="icon">{item.icon}</span>
