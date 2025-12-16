@@ -1,23 +1,10 @@
 import { prisma, Prisma } from "prisma";
-import { TransactionEvent,TransactionEventMetadata } from "types";
+import { TransactionEvent} from "types";
 
-type TransactionMetadata ={
-  idempotencyKey:string
-  causationId:string;
-  correlationId:string;
-  source: string;
-  actorId: string;
-}
 export default async function processTransfer(event: TransactionEvent) {
   return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     // 1) Idempotency check
-    const metadata = event.metadata.reduce<any>(
-  (acc, meta: TransactionEventMetadata) => {
-    acc[meta.key] = meta.value;
-    return acc;
-  },
-  {}
-) as TransactionMetadata;
+
     const existing = await tx.transaction.findUnique({
       where: { id: event.data.transactionId },
     });
@@ -36,7 +23,7 @@ export default async function processTransfer(event: TransactionEvent) {
           receiverPrimaryAccountId: event.data.receiverPrimaryAccountId,
           amount: new Prisma.Decimal(event.data.debit),
           status: "PENDING",
-          idempotencyKey: metadata.idempotencyKey,
+          idempotencyKey: event.metadata.idempotencyKey,
         },
       });
     }
@@ -117,8 +104,8 @@ export default async function processTransfer(event: TransactionEvent) {
     await tx.outbox.create({
       data: {
         transactionId: event.data.transactionId,
-        correlationId: metadata.correlationId,
-        causationId: metadata.causationId,
+        correlationId: event.metadata.correlationId,
+        causationId: event.metadata.causationId,
         senderId: event.data.senderId,
         receiverId: event.data.receiverId,
         payload: JSON.stringify(outboxPayload),
