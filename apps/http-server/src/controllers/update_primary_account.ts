@@ -4,7 +4,8 @@ import { AuthRequest } from "types"
 const update_primary_account = async (req: AuthRequest, res: Response) => {
     try {
         const user = req.user
-        const accountId = req.body.accountId
+        const accountId = req.body.accountId as string
+    
         const user_account_detail = await prisma.account.findFirst({
             where: { id: accountId },
         })
@@ -28,11 +29,9 @@ const update_primary_account = async (req: AuthRequest, res: Response) => {
                         isPrimary: true,
                     },
                 });
-
-                return { updatedUser, updatedAccountDetail };
             }
         );
-        return res.status(200).json({ user_account_detail })
+        return res.status(200).json({ message: "Primary account updated successfully" } )
     }
     catch (error: any) {
         return res.status(500).json({ message: "server error" })

@@ -68,7 +68,6 @@ const callbackHandler = async (req: AuthRequest, res: Response) => {
       httpOnly: true,
       secure: true,
       sameSite: "none",
-      domain:".shortner.services",
       maxAge: 7 * 24 * 60 * 60 * 1000,
       path:"/"
     });

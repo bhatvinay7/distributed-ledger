@@ -13,7 +13,7 @@ const update_user_profile = async (req: AuthRequest, res: Response) => {
         const user = req.user
         if (!parsed.success) {
             return res.status(400).json({
-                errors:parsed.error,
+                errors:parsed.error.issues.map(e =>e.message),
             });
         }
 
@@ -31,7 +31,7 @@ const update_user_profile = async (req: AuthRequest, res: Response) => {
             where: { id: user.userId },
             data: updateData,
         });
-
+    return res.status(200).json({ message: "profile updated successfully" })
     }
     catch (error: any) {
         return res.status(500).json({ message: "server error" })
