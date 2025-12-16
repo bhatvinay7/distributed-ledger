@@ -1,5 +1,5 @@
-import { Request, Response, NextFunction } from "express";
-import jwt, { JwtPayload } from "jsonwebtoken";
+import { Response, NextFunction } from "express";
+import jwt from "jsonwebtoken";
 import { userCredentials,AuthRequest } from "types";
 import dotenv from 'dotenv'
 dotenv.config()
@@ -11,7 +11,7 @@ export const authMiddleware = async (
 ) => {
   try {
     const authHeader = req.headers.authorization;
-    const cookieToken= req.cookies?.inbox_token;
+    const cookieToken= req.cookies?.payit_token;
     if ((!authHeader || !authHeader.startsWith("Bearer")) && !cookieToken) {
       return res.status(401).json({ message: "Unauthorized: Token missing" });
     }

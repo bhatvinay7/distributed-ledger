@@ -1,18 +1,27 @@
 import { Request, Response } from "express";
-import { prisma } from "prisma";
+import { prisma,Prisma } from "prisma";
 import { v4 as uuid } from "uuid";
 import getRedisClient from "redisclient";
 import {client}  from "ledger";
-import {AuthRequest,userCredentials,TransactionEventData} from 'types'
-import { jsonEvent } from '@eventstore/db-client';
-
+import {AuthRequest,TransactionEvent} from 'types'
+import { jsonEvent,NO_STREAM ,ANY } from '@eventstore/db-client';
+import  Decimal from "decimal.js"
 export const payAmount = async (req:AuthRequest, res: Response) => {
   try {
     const redis = await getRedisClient();
     const user = req.user
-    const { receiverId, amount, idempotencyKey } = req.body;
+    const { receiverAccountId, amount, idempotencyKey } = req.body as {
+      receiverAccountId: string;
+      amount: string;
+      idempotencyKey: string;
+    };
     if(!user?.userId){
         return res.status(400).json({message:"user info is not avalable"})
+    }
+    const sender_account_holder=await prisma.user.findUnique({where:{id:user.userId},select:{primaryAccountId:true}})
+    const receiver_account_holder=await prisma.account.findUnique({where:{id:receiverAccountId},select:{id:true,userId:true}})
+    if(!receiver_account_holder){
+        return res.status(404).json({message:"account holder not found"})
     }
     const exists = await redis.get(`${user.userId}-${idempotencyKey}`);
     if (exists) {
@@ -20,45 +29,58 @@ export const payAmount = async (req:AuthRequest, res: Response) => {
     }
     await redis.set(`${user.userId}-${idempotencyKey}`, "1", { EX: 30 })
      const account = await prisma.account.findFirst({
-            where: { userId: user?.userId }
+            where: { userId: user?.userId,id:sender_account_holder?.primaryAccountId! },
         });
     if (!account) {
    return res.status(400).json({ message: "No account found" });
  }
- if (account.balance < amount) {
+ const precisedAmount = new Prisma.Decimal(amount)
+ 
+ if (account.balance.lt(precisedAmount)) {
    return res.status(400).json({ message: "Insufficient balance" });
  }
     const tx = await prisma.transaction.create({
       data: {
         senderId: user.userId,
-        receiverId,
-        amount,
+        receiverId:receiver_account_holder.userId,
+        amount:precisedAmount,
         status: 'PENDING',
         idempotencyKey,
+        senderPrimaryAccountId: sender_account_holder?.primaryAccountId!,
+        receiverPrimaryAccountId: receiver_account_holder?.id!,
       },
     });
     
 
-  const event=jsonEvent({
-  id: uuid(),
+const event = jsonEvent<TransactionEvent>({
+
   type: "TRANSACTION_CREATED",
   data: {
     transactionId: tx.id,
-    accountId: account.id,
-    debit: amount,
+    senderId: user.userId,
+    receiverId: receiver_account_holder.userId,
+    senderPrimaryAccountId: sender_account_holder?.primaryAccountId ?? "",
+    receiverPrimaryAccountId: receiver_account_holder?.id ?? "",
+    debit: Number(precisedAmount),
     credit: 0,
-    debitType: "Online",
-    creditType: "None",
-    balance: account.balance,
+    debitType: "ONLINE",
+    creditType: "NONE",
+    balanceAfter: Number(account.balance),
     note: "debited",
-    status: "PENDING",
-    idEmpotencyKey :idempotencyKey ,
-    timestamp: new Date().toISOString(),
+    status: "PENDING"
   },
+  metadata: [
+    { key: "idempotencyKey", value: idempotencyKey },
+    { key: "causationId", value: tx.id },
+    { key: "correlationId", value: uuid() },
+    { key: "source", value: "http-api" },
+    { key: "actorId", value: user.userId }
+  ]
+
+
 })
-   await client?.appendToStream(`transaction-${user.userId}`, event,{
-      streamState: "no_stream",
-});
+console.log("Appending event to stream:", event);
+   await client?.appendToStream(`transaction-${user.userId}`, [event],{deadline: Date.now() + 5000});
 
 
     return res.status(200).json({

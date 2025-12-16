@@ -5,12 +5,12 @@ const fetch_user_accounts = async (req: AuthRequest, res: Response) => {
     try {
 
         const user = req.user
+        console.log(user)
         const userAccounts = await prisma.account.findMany({
             where: { userId: user.userId },
             select: {
                 details: {
                     select: {
-                        id: true,
                         accountId: true,
                         bankName:true,
                         accountNumber:true,

@@ -18,9 +18,9 @@ export const BankAccountSchema = z.object({
         .string()
         .regex(/^[A-Z]{4}0[A-Z0-9]{6}$/, "Invalid IFSC code"),
 
-    accountNumber: z
-        .string()
-        .regex(/^[0-9]{9,18}$/, "Account number must be 9–18 digits"),
+    // accountNumber: z
+        // .string()
+        // .regex(/^[0-9]{9,18}$/, "Account number must be 9–18 digits"),
 
     address: z
         .string()
@@ -34,12 +34,15 @@ export const BankAccountSchema = z.object({
 
 const add_account = async (req: AuthRequest, res: Response) => {
     try {
+
         const parsed = BankAccountSchema.safeParse(req.body);
+        console.log(req.body)
         const user = req.user
+          console.log(user)
         if (!parsed.success) {
-            const errorMessages = parsed.error
+            const errorMessages = parsed.error.issues.map(e => e.message)
             return res.status(400).json({
-                errors: errorMessages,
+                errors: errorMessages
             });
         }
         const account = await prisma.account.create({
@@ -54,8 +57,8 @@ const add_account = async (req: AuthRequest, res: Response) => {
                         branch: parsed.data.branch,
                         ifsc: parsed.data.ifsc,
                         accountNumber: `${user.userId}-${uuid()}`,
-                        address: parsed.data.address ?? "" ,
-                        pin: parsed.data.pin ?? "",
+                        address: "" ,
+                        pin: "",
                     },
                 },
             },
@@ -63,7 +66,7 @@ const add_account = async (req: AuthRequest, res: Response) => {
                 details: true,
             },
         });
-
+    return res.status(201).json({ message: "Account successfully created" })
     }
     catch (error: any) {
         return res.status(500).json({ message: "server error" })
