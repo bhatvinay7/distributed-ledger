@@ -69,15 +69,13 @@ const event = jsonEvent<TransactionEvent>({
     note: "debited",
     status: "PENDING"
   },
-  metadata: [
-    { key: "idempotencyKey", value: idempotencyKey },
-    { key: "causationId", value: tx.id },
-    { key: "correlationId", value: uuid() },
-    { key: "source", value: "http-api" },
-    { key: "actorId", value: user.userId }
-  ]
-
-
+  metadata: {
+  idempotencyKey: idempotencyKey,
+  causationId: tx.id,
+  correlationId: uuid(),
+  source: "http-api",
+  actorId: user.userId
+}
 })
 console.log("Appending event to stream:", event);
    await client?.appendToStream(`transaction-${user.userId}`, [event],{deadline: Date.now() + 5000});
