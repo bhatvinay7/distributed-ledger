@@ -77,8 +77,9 @@ const event = jsonEvent<TransactionEvent>({
   actorId: user.userId
 }
 })
+try{
 console.log("Appending event to stream:", event);
-   await client?.appendToStream(`transaction-${user.userId}`, [event],{deadline: Date.now() + 5000});
+   await client?.appendToStream(`transaction-${user.userId}`, event,{deadline: Date.now() + 5000});
 
 
     return res.status(200).json({
@@ -87,6 +88,10 @@ console.log("Appending event to stream:", event);
       status: "PENDING",
     });
 
+}
+catch(error:any){
+  return res.status(500).json({message:"Failed to append event to stream",error:error.message})
+}
   } catch (error) {
     console.error(error);
     return res.status(500).json({ message: "Server error" });
