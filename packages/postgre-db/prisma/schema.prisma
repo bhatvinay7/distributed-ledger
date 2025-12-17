@@ -30,14 +30,24 @@ enum outbox {
   SUCCESS
   FAILED
 }
+enum BankAccountType {
+  SAVINGS
+  CURRENT
+  SALARY
+  FIXED_DEPOSIT
+  RECURRING_DEPOSIT
+}
+
 model User {
   id        String   @id @default(uuid())
   username  String
-  phone     String   @unique
+  phone     String
   email     String   @unique
   picture   String?
   isEmailVerified Boolean @default(false)
+  accessToken String
   refreshToken String?
+  primaryAccountId String?
   role   Role     @default(USER)
   accounts  Account[]
   notification Notification[]
@@ -48,8 +58,8 @@ model User {
 model Account {
   id        String   @id @default(uuid())
   userId    String
-  accountType String
-  balance    Decimal  @default(0)
+  accountType  BankAccountType @default(SAVINGS)
+  balance    Decimal  @default(100)
   version   Int      @default(1)
   details   AccountDetail?
   services  ServiceDetail[]
@@ -65,9 +75,10 @@ model AccountDetail {
   bankName   String
   branch     String
   ifsc       String
-  accountNo  String
-  address    String
-  pin        String
+  accountNumber  String
+  address    String?
+  pin        String?
+  isPrimary Boolean  @default(false)
 
   debitServiceId String?
   creditServiceId String?
@@ -91,20 +102,24 @@ model ServiceDetail {
 model Transaction {
   id             String   @id @default(uuid())
   idempotencyKey String   @unique
+  senderPrimaryAccountId String
+  receiverPrimaryAccountId String
   senderId       String
   receiverId     String
   amount         Decimal
   status         paymentStatus  @default(None)
   createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @default(now())
   ledgerEntries LedgerEntry[]
   journalEvents Journal[]
-  sender   Account @relation("AccountTransactions", fields: [senderId], references: [id])
+  sender   Account @relation("AccountTransactions", fields: [senderPrimaryAccountId], references: [id])
 }
 
 model LedgerEntry {
   id            String   @id @default(uuid())
   transactionId String
-  accountId     String
+  senderPrimaryAccountId String
+  receiverPrimaryAccountId String
   debit         Decimal   @default(0)
   credit        Decimal   @default(0)
   debitType     paymentType @default(None)
@@ -113,17 +128,20 @@ model LedgerEntry {
   note          String
   createdAt     DateTime  @default(now())
   transaction Transaction @relation(fields: [transactionId], references: [id])
-  account     Account     @relation(fields: [accountId], references: [id])
+  account     Account     @relation(fields: [senderPrimaryAccountId], references: [id])
 }
 
 model Outbox {
     id  String   @id @default(uuid())
     transactionId String
+    correlationId  String
+    causationId String
     payload String
     senderId  String
     receiverId  String
     attempts   Int      @default(1)
     createdAt DateTime @default(now())
+    updatedAt DateTime @default(now())
     status outbox @default(NEW)
 }
 model Journal {

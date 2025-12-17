@@ -39,19 +39,41 @@ export type SelectedUser = Pick<
   "access_token" | "name" | "refresh_token" | "picture"| "email"
 >;
 
-
 export type TransactionEventData = {
   transactionId: string;
-  accountId: string;
   senderId: string;
-  receiverId:string;
+  receiverId: string;
+  
+  senderPrimaryAccountId: string;
+  receiverPrimaryAccountId: string;
+
   debit: number;
   credit: number;
-  debitType: string;
-  creditType: string;
-  balance: number;
+
+  debitType: "ONLINE" | "OFFLINE" | "NONE";
+  creditType: "ONLINE" | "OFFLINE" | "NONE";
+
+  balanceAfter: number;
+
   note: string;
-  idEmpotencyKey: string;
   status: "PENDING" | "SUCCESS" | "FAILED";
-  timestamp: string;
+};
+
+export type TransactionEventMetadata = {
+  idempotencyKey: string;
+  causationId: string;
+  correlationId: string;
+  source: string;
+  actorId: string;
+};
+
+export type TransactionEvent = {
+  type:
+    | "TRANSACTION_CREATED"
+    | "DEBIT"
+    | "CREDIT"
+    | "TRANSACTION_FAILED";
+
+  data: TransactionEventData;
+  metadata: TransactionEventMetadata;
 };

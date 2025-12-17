@@ -21,16 +21,20 @@ services:
       context: .
       dockerfile: apps/http-server/dockerfile.dev.yaml
     ports:
-    - "3002:3002"
+      - "3002:3002"
     env_file:
-    -  ./apps/http-server/.env
+      -  ./apps/http-server/.env
 
     networks:
       - payit
+    depends_on:
+      - kurrent1
+      # - kurrent2
+      # - kurrent3    
     deploy:
       resources:
         limits:
-          cpus: '0.25'
+          cpus: '0.5'
           memory: 1G  
   projection-worker:
     container_name: projection-worker
@@ -60,6 +64,10 @@ services:
       -  ./apps/transaction-worker/.env
     networks:
       - payit
+    depends_on:
+      - kurrent1
+      # - kurrent2
+      # - kurrent3  
     deploy:
       resources:
         limits:
@@ -92,6 +100,10 @@ services:
       -  ./apps/outbox-worker/.env
     networks:
       - payit
+    depends_on:
+      - kurrent1
+      # - kurrent2
+      # - kurrent3    
     deploy:
       resources:
         limits:
@@ -114,73 +126,81 @@ services:
       resources:
         limits:
           cpus: '1'
-          memory: 2G   
+          memory: 2G
   kurrent1:
-   image: kurrentplatform/kurrentdb:latest
-   container_name: kurrent1
-   command:
-     - --insecure
-     - --node-ip=0.0.0.0
-     - --gossip-seed=kurrent1:2111
-     - --gossip-seed=kurrent2:2112
-     - --gossip-seed=kurrent3:2113
-     - --replication-port=1111
-     - --node-port=2111
-   environment:
-     - KURRENTDB_INSECURE=true
-   ports:
-     - "2111:2111"   # Admin / gossip HTTP for node1
-     - "1111:1111"   # internal replication tcp for node1
-   volumes:
-     - ./data/kurrent1:/var/lib/kurrentdb
-   networks:
-     - payit
+    image: kurrentplatform/kurrentdb:latest
+    container_name: kurrent1
+    privileged: true
+    environment:
+      - KURRENTDB_CLUSTER_SIZE=1
+      - KURRENTDB_DISCOVER_VIA_DNS=false
+      - KURRENTDB_INSECURE=true
+      # - KURRENTDB_GOSSIP_SEED=kurrent2:2113,kurrent3:2113
+      - KURRENTDB_ADVERTISE_HOST_TO_CLIENT_AS=kurrent1
+      - KURRENTDB_ADVERTISE_NODE_PORT_TO_CLIENT_AS=2113
+      # - KURRENTDB_GOSSIP_ALLOWED_DIFFERENCE_MS=120000
+    ports:
+      - "2113:2113"
+      - "1111:1113"
+    volumes:
+      - kurrent1-data:/var/lib/kurrentdb
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+      
+    networks:
+      - payit
 
-  kurrent2:
-   image: kurrentplatform/kurrentdb:latest
-   container_name: kurrent2
-   command:
-     - --insecure
-     - --node-ip=0.0.0.0
-     - --gossip-seed=kurrent1:2111
-     - --gossip-seed=kurrent2:2112
-     - --gossip-seed=kurrent3:2113
-     - --replication-port=1112
-     - --node-port=2112
-   environment:
-     - KURRENTDB_INSECURE=true
-   ports:
-     - "2112:2112"
-     - "1112:1112"
-   volumes:
-     - ./data/kurrent2:/var/lib/kurrentdb
-   networks:
-     - payit
+  # kurrent2:
+    # image: kurrentplatform/kurrentdb:latest
+    # container_name: kurrent2
+    # privileged: true
+    # environment:
+      # - KURRENTDB_CLUSTER_SIZE=3
+      # - KURRENTDB_DISCOVER_VIA_DNS=false
+      # - KURRENTDB_INSECURE=true
+      # - KURRENTDB_GOSSIP_SEED=kurrent1:2113,kurrent3:2113
+      # - KURRENTDB_ADVERTISE_HOST_TO_CLIENT_AS=kurrent2
+      # - KURRENTDB_ADVERTISE_NODE_PORT_TO_CLIENT_AS=2113
+      # - KURRENTDB_GOSSIP_ALLOWED_DIFFERENCE_MS=120000
+      # 
+    # ports:
+      # - "2115:2113"
+      # - "1112:1113"
+    # volumes:
+      # - kurrent2-data:/var/lib/kurrentdb
+      # - /etc/localtime:/etc/localtime:ro
+      # - /etc/timezone:/etc/timezone:ro
+    # networks:
+      # - payit
+# 
+  # kurrent3:
+    # image: kurrentplatform/kurrentdb:latest
+    # container_name: kurrent3
+    # privileged: true
+    # environment:
+      # - KURRENTDB_CLUSTER_SIZE=3
+      # - KURRENTDB_DISCOVER_VIA_DNS=false
+      # - KURRENTDB_INSECURE=true
+      # - KURRENTDB_GOSSIP_SEED=kurrent1:2113,kurrent2:2113
+      # - KURRENTDB_ADVERTISE_HOST_TO_CLIENT_AS=kurrent3
+      # - KURRENTDB_ADVERTISE_NODE_PORT_TO_CLIENT_AS=2113
+      # - KURRENTDB_GOSSIP_ALLOWED_DIFFERENCE_MS=120000
+    # ports:
+      # - "2117:2113"
+      # - "1113:1113"
+    # volumes:
+      # - kurrent3-data:/var/lib/kurrentdb
+      # - /etc/localtime:/etc/localtime:ro
+      # - /etc/timezone:/etc/timezone:ro
+    # networks:
+      # - payit 
 
-  kurrent3:
-   image: kurrentplatform/kurrentdb:latest
-   container_name: kurrent3
-   command:
-     - --insecure
-     - --node-ip=0.0.0.0
-     - --gossip-seed=kurrent1:2111
-     - --gossip-seed=kurrent2:2112
-     - --gossip-seed=kurrent3:2113
-     - --replication-port=1113
-     - --node-port=2113
-   environment:
-     - KURRENTDB_INSECURE=true
-   ports:
-     - "2113:2113"
-     - "1113:1113"
-   volumes:
-     - ./data/kurrent3:/var/lib/kurrentdb
-    
-   networks:
-     - payit
 networks:
   payit:
     name: payit
     driver: bridge      
 volumes:
   rabbitmq-data:
+  kurrent1-data:
+  # kurrent2-data:
+  # kurrent3-data:
