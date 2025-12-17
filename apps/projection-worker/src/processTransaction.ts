@@ -4,6 +4,8 @@ export async function processTransaction(event: any) {
         transactionId,
         senderId,
         receiverId,
+        receiverAccountId,
+        senderAccountId,
         debit,
         credit,
         debitType,
@@ -17,8 +19,8 @@ export async function processTransaction(event: any) {
         try {
 
             const [sender, receiver] = await Promise.all([
-                tx.account.findUnique({ where: { id: senderId } }),
-                tx.account.findUnique({ where: { id: receiverId } }),
+                tx.account.findUnique({ where: {id:senderAccountId, userId: senderId, } }),
+                tx.account.findUnique({ where: {id:receiverAccountId, userId: receiverId } }),
             ]);
 
             if (!sender) throw new Error("Sender not found");
@@ -33,7 +35,8 @@ export async function processTransaction(event: any) {
             const senderEntry = await tx.ledgerEntry.create({
                 data: {
                     transactionId,
-                    accountId: senderId,
+                    senderPrimaryAccountId: senderAccountId,
+                    receiverPrimaryAccountId: receiverAccountId,
                     debit: debitDecimal,
                     credit: new Prisma.Decimal(0),
                     debitType:"Online",
@@ -47,7 +50,8 @@ export async function processTransaction(event: any) {
             const receiverEntry = await tx.ledgerEntry.create({
                 data: {
                     transactionId,
-                    accountId: receiverId,
+                    senderPrimaryAccountId: senderAccountId,
+                    receiverPrimaryAccountId: receiverAccountId,
                     debit: new Prisma.Decimal(0),
                     credit: creditDecimal,
                     debitType: "None",
@@ -68,13 +72,13 @@ export async function processTransaction(event: any) {
                         entries: [
                             {
                                 type: "DEBIT",
-                                accountId: senderId,
+                                accountId: senderAccountId,
                                 message: `Account ${senderId} was debited ₹${amount}`,
                                 amount: amount
                             },
                             {
                                 type: "CREDIT",
-                                accountId: receiverId,
+                                accountId: receiverAccountId,
                                 message: `Account ${receiverId} was credited ₹${amount}`,
                                 amount: amount
                             }
