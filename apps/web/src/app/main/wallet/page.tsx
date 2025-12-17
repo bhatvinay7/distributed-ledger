@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 
 export default function Walletui() {
   return (
-    <div className=" w-full h-screen text-black/75  p-6 bg-white space-y-6">
+    <div className=" w-full h-screen border border-black/15 rounded-2xl text-black/75  p-6 bg-white space-y-6">
       {/* Header */}
       <div className="flex mx-auto w-full items-center space-x-1.5 justify-start">
         <h1 className="text-3xl font-bold flex items-center gap-2">
@@ -37,7 +37,7 @@ export default function Walletui() {
         </div>
       </motion.div>
        <Button className="flex items-center p-1 gap-2">
-       <PlusCircle className="h-4 w-4" /> Add Money
+       <PlusCircle className="h-4 w-4" /> Add money to wallet
        </Button>
       {/* Tabs */}
       <Tabs defaultValue="transactions" className="w-full">
@@ -54,7 +54,7 @@ export default function Walletui() {
               <CardTitle>Recent Activity</CardTitle>
             </CardHeader>
             <CardContent >
-              <ScrollArea className="h-64  overflow-y-auto  pr-3">
+              <ScrollArea className="h-64  overflow-y-auto custom-scrollbar  pr-3">
                 {Array.from({ length: 8 }).map((_, i) => (
                   <div key={i} className="flex items-center justify-between p-3 border-b last:border-none">
                     <div className="flex items-center gap-3">
@@ -81,7 +81,7 @@ export default function Walletui() {
               <CardTitle>Received Money</CardTitle>
             </CardHeader>
             <CardContent>
-              <ScrollArea className="h-64 overflow-y-auto  pr-3">
+              <ScrollArea className="h-64 overflow-y-auto custom-scrollbar  pr-3">
                 {Array.from({ length: 5 }).map((_, i) => (
                   <div key={i} className="flex items-center justify-between p-3 border-b last:border-none">
                     <div className="flex items-center gap-3">
@@ -108,7 +108,7 @@ export default function Walletui() {
               <CardTitle>Sent Money</CardTitle>
             </CardHeader>
             <CardContent>
-              <ScrollArea className="h-64 overflow-y-auto pr-3">
+              <ScrollArea className="h-64 overflow-y-auto custom-scrollbar pr-3">
                 {Array.from({ length: 6 }).map((_, i) => (
                   <div key={i} className="flex items-center justify-between p-3 border-b last:border-none">
                     <div className="flex items-center gap-3">
