@@ -68,7 +68,7 @@ const add_account = async (req: AuthRequest, res: Response) => {
         });
     return res.status(201).json({ message: "Account successfully created" })
     }
-    catch (error: any) {
+    catch (error: unknown) {
         return res.status(500).json({ message: "server error" })
     }
 }

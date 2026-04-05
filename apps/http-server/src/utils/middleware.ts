@@ -28,10 +28,12 @@ export const authMiddleware = async (
     req.user = user;
 
     next();
-  } catch (error: any) {
-    console.error("JWT verification failed:", error.message);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    const name = error instanceof Error ? error.name : "";
+    console.error("JWT verification failed:", message);
 
-    if (error.name === "TokenExpiredError") {
+    if (name === "TokenExpiredError") {
       return res.status(401).json({ message: "Token expired" });
     }
 

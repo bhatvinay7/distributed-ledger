@@ -75,9 +75,10 @@ const callbackHandler = async (req: AuthRequest, res: Response) => {
     return res.redirect(`${process.env.NEXT_PUBLIC_FRONTEND_URL!}`);
   }
   
-  catch (error: any) {
-    console.error("OAuth Error:", error.message);
-    return res.status(500).json({ message: "OAuth error", error: `${error.message}` });
+  catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("OAuth Error:", message);
+    return res.status(500).json({ message: "OAuth error", error: message });
   }
 };
 

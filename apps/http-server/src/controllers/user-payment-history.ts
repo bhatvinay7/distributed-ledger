@@ -15,7 +15,7 @@ const fetchUserPaymentHistory = async (req: AuthRequest, res: Response) => {
             }
             return res.status(200).json({paymentHistory:userPaymentHistory})
       }
-      catch (error: any) {
+      catch (error: unknown) {
        return res.status(500).json({message:"server error"})
       }
 }

@@ -20,7 +20,7 @@ const fetch_user_account_detail = async (req: AuthRequest, res: Response) => {
             }
             return res.status(200).json({user_account_detail})
       }
-      catch (error: any) {
+      catch (error: unknown) {
        return res.status(500).json({message:"server error"})
       }
 }

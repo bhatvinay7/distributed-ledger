@@ -22,8 +22,9 @@ export const getUser_details = createAsyncThunk(
     try {
       const res = await getUserDetail();
       return res;
-    } catch (err: any) {
-      return thunkAPI.rejectWithValue(err.response?.data || err.message);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      return thunkAPI.rejectWithValue(message);
     }
   }
 );

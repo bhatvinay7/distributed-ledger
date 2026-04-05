@@ -1,5 +1,5 @@
-import {prisma} from "prisma"
-import {NO_STREAM,client,jsonEvent} from "ledger"
+import { prisma } from "prisma"
+import { NO_STREAM, client, jsonEvent } from "ledger"
 import pushMessageToqueue from "./publishToQueue.js";
 const OUTBOX_BATCH = 20;
 
@@ -29,50 +29,75 @@ export async function startOutboxWorker() {
 
       for (const item of items) {
         try {
-          const payload = JSON.parse(item.payload as any);
-          const txId = payload.transactionId;
-          const senderId = payload.senderId;
-          const receiverId = payload.receiverId;
-          const amount = BigInt(payload.amount);
+          const payload = JSON.parse(item.payload as string);
+          const txId = payload.transactionId as string;
+          const senderId = payload.senderId as string;
+          const senderAccountId = payload.senderAccountId as string;
+          const receiverAccountId = payload.receiverAccountId as string;
+          const receiverId = payload.receiverId as string;
+          // Bug fix: BigInt("100.50") throws SyntaxError for decimal amounts.
+          // Keep amount as the original string — KurrentDB event data is JSON so strings are fine.
+          const amount = payload.amount as string;
+          const requestId = item.correlationId;
+          const commandId = item.causationId;
 
-          await client?.appendToStream(`transactions-${senderId}`, [
-             jsonEvent({
-               type: "DEBIT",
-               data:{
-                 transactionId: txId,
-                 userId: senderId,
-                 amount: amount.toString(),
-                 timestamp: new Date().toISOString(),
-                }
-               
-              })
+          await client?.appendToStream(
+            `transactions-${senderId}`,
+            [
+              jsonEvent({
+                type: "DEBIT",
+                data: {
+                  transactionId: txId,
+                  userId: senderId,
+                  senderAccountId,
+                  amount: amount.toString(),
+                },
+                metadata: {
+                  requestId,
+                  correlationId: requestId,
+                  causationId: commandId,
+                  direction: "DEBIT",
+                  source: "http-api",
+                },
+              }),
             ]
           );
 
-          await client?.appendToStream(`transactions-${receiverId}`,[
-            jsonEvent({
-              type: "CREDIT",
-              data:{
-                transactionId: txId,
-                userId: receiverId,
-                amount: amount.toString(),
-                timestamp: new Date().toISOString(),
-              }})]
+          await client?.appendToStream(
+            `transactions-${receiverId}`,
+            [
+              jsonEvent({
+                type: "CREDIT",
+                data: {
+                  transactionId: txId,
+                  userId: receiverId,
+                  receiverAccountId,
+                  amount: amount.toString(),
+                },
+                metadata: {
+                  requestId,                  // SAME as debit
+                  correlationId: requestId,    // SAME as debit
+                  causationId: commandId,      // SAME command
+                  direction: "CREDIT",
+                  source: "http-api",
+                },
+              }),
+            ]
           );
+
 
           await prisma.outbox.update({
             where: { id: item.id },
-            data: { status: "SUCCESS" },
+            data: { status: "SUCCESS", updatedAt: new Date() },
           });
 
-        await pushMessageToqueue(payload)
+          await pushMessageToqueue(payload)
 
         } catch (innerErr) {
           await prisma.outbox.update({
             where: { id: item.id },
             data: {
               status: "FAILED",
-              lastError: String((innerErr as Error).message).slice(0, 1000),
               updatedAt: new Date(),
             },
           });

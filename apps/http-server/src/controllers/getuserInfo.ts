@@ -10,7 +10,7 @@ const getCredentials=async (req:AuthRequest,res:Response)=>{
      return res.status(200).json(req.user)
     }
     catch(error:any){
-        return res.status(500).json({message:"error.message"})
+        return res.status(500).json({message:error.message})
     }
 }
 export default getCredentials

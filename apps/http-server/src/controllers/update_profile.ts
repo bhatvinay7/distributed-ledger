@@ -33,7 +33,7 @@ const update_user_profile = async (req: AuthRequest, res: Response) => {
         });
     return res.status(200).json({ message: "profile updated successfully" })
     }
-    catch (error: any) {
+    catch (error: unknown) {
         return res.status(500).json({ message: "server error" })
     }
 }

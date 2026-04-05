@@ -86,6 +86,9 @@ export default async function processTransfer(event: TransactionEvent) {
     }
 
     // 7) Outbox (atomic)
+    // Capture a single timestamp so the payload and the DB row are identical —
+    // avoids clock skew between two separate new Date() calls.
+    const now = new Date();
     const outboxPayload = {
       transactionId: event.data.transactionId,
       senderId: event.data.senderId,
@@ -98,7 +101,7 @@ export default async function processTransfer(event: TransactionEvent) {
       creditType: event.data.creditType,
       note: event.data.note,
       amount: debitAmount.toString(),
-      createdAt: new Date().toISOString(),
+      createdAt: now.toISOString(),
     };
 
     await tx.outbox.create({
@@ -110,15 +113,14 @@ export default async function processTransfer(event: TransactionEvent) {
         receiverId: event.data.receiverId,
         payload: JSON.stringify(outboxPayload),
         status: "NEW",
-        createdAt: new Date(),
-        
+        createdAt: now,
       },
     });
 
     // 8) Mark SUCCESS
     await tx.transaction.update({
       where: { id: event.data.transactionId },
-      data: { status: "SUCCESS" },
+      data: { status: "SUCCESS", updatedAt: now },
     });
 
     return { status: "SUCCESS" };

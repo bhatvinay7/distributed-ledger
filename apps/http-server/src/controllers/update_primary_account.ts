@@ -33,7 +33,7 @@ const update_primary_account = async (req: AuthRequest, res: Response) => {
         );
         return res.status(200).json({ message: "Primary account updated successfully" } )
     }
-    catch (error: any) {
+    catch (error: unknown) {
         return res.status(500).json({ message: "server error" })
     }
 }

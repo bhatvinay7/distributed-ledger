@@ -1,37 +1,36 @@
 services:
-  # web:
-  #  container_name: web
-  #  build:
-    # context: .
-    # dockerfile: apps/web/dockerfile.dev.yaml
-  #  ports:
-    # - "3000:3000"
-  #  env_file:
-    # -  ./apps/web/.env
-  #  networks:
-    # - payit
-  #  deploy:
-    # resources:
-      # limits:
-        # cpus: '1.5'
-        # memory: 2G     
   http-server:
     container_name: http-server
     build:
       context: .
       dockerfile: apps/http-server/dockerfile.dev.yaml
     ports:
-    - "3002:3002"
+      - "3002:3002"
     env_file:
-    -  ./apps/http-server/.env
-
+      - ./apps/http-server/.env
+    environment:
+      # Clock sync: set explicit timezone so all containers share the same
+      # wall-clock reference. On Windows/WSL2 the /etc/localtime bind-mount
+      # does not propagate from the Windows host, causing event timestamps
+      # to drift vs. KurrentDB. TZ env var works on every platform.
+      - TZ=UTC
     networks:
       - payit
+    depends_on:
+      kurrent1:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     deploy:
       resources:
         limits:
-          cpus: '0.25'
-          memory: 1G  
+          cpus: "0.5"
+          memory: 1G
+
   projection-worker:
     container_name: projection-worker
     build:
@@ -40,14 +39,21 @@ services:
     ports:
       - "3004:3004"
     env_file:
-      -  ./apps/projection-worker/.env
+      - ./apps/projection-worker/.env
+    environment:
+      - TZ=UTC
     networks:
       - payit
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     deploy:
-     resources:
-       limits:
-         cpus: '0.25'
-         memory: 1G  
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 1G
 
   transaction-worker:
     container_name: transaction-worker
@@ -57,52 +63,138 @@ services:
     ports:
       - "3005:3005"
     env_file:
-      -  ./apps/transaction-worker/.env
+      - ./apps/transaction-worker/.env
+    environment:
+      - TZ=UTC
     networks:
       - payit
+    depends_on:
+      kurrent1:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
     deploy:
       resources:
         limits:
-          cpus: '0.25'
-          memory: 1G         
-  # service-worker:
-    # container_name: service-worker
-    # build:
-      # context: .
-      # dockerfile: apps/service-worker/dockerfile.dev.yaml
-    # ports:
-      # - "3006:3006"
-    # env_file:
-      # -  ./apps/service-worker/.env
-    # networks:
-      # - payit
-    # deploy:
-      # resources:
-        # limits:
-          # cpus: '0.25'
-          # memory: 1G       
+          cpus: "0.25"
+          memory: 1G
+
   outbox-worker:
-    container_name: service-worker
+    # Bug fix: was mistakenly named "service-worker" which shadowed the real service-worker
+    container_name: outbox-worker
     build:
       context: .
       dockerfile: apps/outbox-worker/dockerfile.dev.yaml
     ports:
       - "3006:3006"
     env_file:
-      -  ./apps/outbox-worker/.env
+      - ./apps/outbox-worker/.env
+    environment:
+      - TZ=UTC
     networks:
       - payit
+    depends_on:
+      kurrent1:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     deploy:
       resources:
         limits:
-          cpus: '0.25'
-          memory: 1G                                   
+          cpus: "0.25"
+          memory: 1G
+
+  kurrent1:
+    image: kurrentplatform/kurrentdb:latest
+    container_name: kurrent1
+    privileged: true
+    environment:
+      - KURRENTDB_CLUSTER_SIZE=1
+      - KURRENTDB_DISCOVER_VIA_DNS=false
+      - KURRENTDB_INSECURE=true
+      - KURRENTDB_ADVERTISE_HOST_TO_CLIENT_AS=kurrent1
+      - KURRENTDB_ADVERTISE_NODE_PORT_TO_CLIENT_AS=2113
+      # Clock sync: allow up to 2 s of clock skew between cluster nodes.
+      # Needed when running on WSL2/Windows where the Linux VM clock can drift.
+      - KURRENTDB_GOSSIP_ALLOWED_DIFFERENCE_MS=2000
+      - TZ=UTC
+    ports:
+      - "2113:2113"
+      - "1111:1113"
+    volumes:
+      - kurrent1-data:/var/lib/kurrentdb
+    networks:
+      - payit
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:2113/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 2G
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: postgres
+    environment:
+      POSTGRES_DB: payit_db
+      POSTGRES_USER: payit_user
+      POSTGRES_PASSWORD: payit_password
+      TZ: UTC
+      PGTZ: UTC
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - payit
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U payit_user -d payit_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 1G
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    command: redis-server --requirepass redis_password --appendonly yes
+    environment:
+      - TZ=UTC
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - payit
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "redis_password", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 512M
+
   rabbitmq:
     container_name: rabbitmq
     image: "rabbitmq:3-management"
     environment:
-      RABBITMQ_DEFAULT_USER: inbox_user
-      RABBITMQ_DEFAULT_PASS: inbox_password
+      RABBITMQ_DEFAULT_USER: payit_user
+      RABBITMQ_DEFAULT_PASS: payit_password
+      TZ: UTC
     volumes:
       - rabbitmq-data:/var/lib/rabbitmq
     ports:
@@ -110,77 +202,25 @@ services:
       - "15672:15672"
     networks:
       - payit
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
     deploy:
       resources:
         limits:
-          cpus: '1'
-          memory: 2G   
-  kurrent1:
-   image: kurrentplatform/kurrentdb:latest
-   container_name: kurrent1
-   command:
-     - --insecure
-     - --node-ip=0.0.0.0
-     - --gossip-seed=kurrent1:2111
-     - --gossip-seed=kurrent2:2112
-     - --gossip-seed=kurrent3:2113
-     - --replication-port=1111
-     - --node-port=2111
-   environment:
-     - KURRENTDB_INSECURE=true
-   ports:
-     - "2111:2111"   # Admin / gossip HTTP for node1
-     - "1111:1111"   # internal replication tcp for node1
-   volumes:
-     - ./data/kurrent1:/var/lib/kurrentdb
-   networks:
-     - payit
+          cpus: "1"
+          memory: 2G
 
-  kurrent2:
-   image: kurrentplatform/kurrentdb:latest
-   container_name: kurrent2
-   command:
-     - --insecure
-     - --node-ip=0.0.0.0
-     - --gossip-seed=kurrent1:2111
-     - --gossip-seed=kurrent2:2112
-     - --gossip-seed=kurrent3:2113
-     - --replication-port=1112
-     - --node-port=2112
-   environment:
-     - KURRENTDB_INSECURE=true
-   ports:
-     - "2112:2112"
-     - "1112:1112"
-   volumes:
-     - ./data/kurrent2:/var/lib/kurrentdb
-   networks:
-     - payit
-
-  kurrent3:
-   image: kurrentplatform/kurrentdb:latest
-   container_name: kurrent3
-   command:
-     - --insecure
-     - --node-ip=0.0.0.0
-     - --gossip-seed=kurrent1:2111
-     - --gossip-seed=kurrent2:2112
-     - --gossip-seed=kurrent3:2113
-     - --replication-port=1113
-     - --node-port=2113
-   environment:
-     - KURRENTDB_INSECURE=true
-   ports:
-     - "2113:2113"
-     - "1113:1113"
-   volumes:
-     - ./data/kurrent3:/var/lib/kurrentdb
-    
-   networks:
-     - payit
 networks:
   payit:
     name: payit
-    driver: bridge      
+    driver: bridge
+
 volumes:
   rabbitmq-data:
+  kurrent1-data:
+  postgres-data:
+  redis-data:
